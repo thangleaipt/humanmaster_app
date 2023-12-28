@@ -62,10 +62,12 @@ class Video(db.Model):
   id = Column(INTEGER, primary_key=True, autoincrement=True)
   path = Column(NVARCHAR(255), nullable=False)
   time = Column(INTEGER, nullable=False)
+  start_time = Column(INTEGER, nullable=False)
 
   def __init__(self, path, time):
     self.path = path
     self.time = time
+    self.start_time = time
 
 class Report(db.Model):
   __tablename__ = "Reports"
@@ -78,8 +80,10 @@ class Report(db.Model):
   code_color = Column(VARCHAR(20), nullable=True)
   time = Column(INTEGER, nullable=False)
   video_id = Column(INTEGER, ForeignKey(Video.id), nullable=False)
+  isface = Column(INTEGER, nullable=True)
+  real_time = Column(INTEGER, nullable=True)
 
-  def __init__(self, person_name, age, gender, mask, code_color, time, video_id):
+  def __init__(self, person_name, age, gender, mask, code_color, time, video_id, isface, real_time):
     self.person_name = person_name
     self.age = age
     self.gender = gender
@@ -87,6 +91,8 @@ class Report(db.Model):
     self.code_color = code_color
     self.time = time
     self.video_id = video_id
+    self.isface = isface
+    self.real_time = real_time
 
 class ReportImage(db.Model):
   __tablename__ = "ReportImages"

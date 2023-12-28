@@ -241,6 +241,7 @@ class PAGEWIDGET(QWidget):
                         self.tableWidget.verticalHeader().setStretchLastSection(True)
                         self.horizontalLayout_12.addWidget(self.tableWidget)
                         self.verticalLayout_6.addWidget(self.frame_3)
+                        self.tableWidget.cellClicked.connect(self.on_row_selected)
 
         def retranslateUi(self):
                         ___qtablewidgetitem = self.tableWidget.horizontalHeaderItem(0)
@@ -279,7 +280,6 @@ class PAGEWIDGET(QWidget):
                         self.tableWidget.setItem(i, 1, QTableWidgetItem(str(path_video.id)))
                         self.tableWidget.setItem(i, 2, QTableWidgetItem(str(path_video.path)))
                         self.tableWidget.setItem(i, 3, QTableWidgetItem(str(self.convert_timestamp_to_datetime(path_video.time))))
-                self.tableWidget.cellClicked.connect(self.on_row_selected)
                 return list_path_video
         
         def on_row_selected(self):
@@ -294,7 +294,8 @@ class PAGEWIDGET(QWidget):
                                 video_id = int(item.text())
                                 # Fomat datetime
                                 time = (item_time.text())
-                                page_report = PAGEREPORT(video_id, time, self.analyzer)
+                                path_video = self.tableWidget.item(index.row(), 2).text()
+                                page_report = PAGEREPORT(video_id, time, self.analyzer, path_video)
                                 page_report.exec_()
           
         def resizeEvent(self,event):
