@@ -614,20 +614,24 @@ class PAGEREPORT(QDialog):
                                         list_path_person_image.append(image_path)
                         if len(list_path_face_image) > 0:
                                 image_path = list_path_face_image[len(list_path_face_image)//2]
-                        else:
+                        elif len(list_path_person_image) > 0:
                                 image_path = list_path_person_image[len(list_path_person_image)//2]
+                        
                         print(f"Length face: {len(list_path_face_image)} Length person: {len(list_path_person_image)} path: {image_path}")
                         if image_path is not None:
                                 image = cv2.imread(image_path)
+                                if image.shape[0] > image.shape[1]:
+                                        image = cv2.resize(image, (128, 128*image.shape[0]//image.shape[1]))
+                                else:
+                                        image = cv2.resize(image, (128*image.shape[1]//image.shape[0], 128))
                                 q_image = QImage(image.data, image.shape[1], image.shape[0], QImage.Format_BGR888)
                                 pixmap = QPixmap.fromImage(q_image)
-                                pixmap = pixmap.scaledToWidth(128, Qt.SmoothTransformation).scaledToHeight(128, Qt.SmoothTransformation)
                                 item = QTableWidgetItem()
                                 item.setData(Qt.DecorationRole, pixmap)
-                                
-                        self.tableWidget.setItem(i, 7, item)
-                        self.tableWidget.setRowHeight(i, pixmap.height())
-                        self.tableWidget.setColumnWidth(4, pixmap.width() + 20)
+                                        
+                                self.tableWidget.setItem(i, 7, item)
+                                self.tableWidget.setRowHeight(i, pixmap.height())
+                                self.tableWidget.setColumnWidth(4, pixmap.width() + 20)
 
         def on_row_selected(self):
                 selected_rows = self.tableWidget.selectionModel().selectedRows()

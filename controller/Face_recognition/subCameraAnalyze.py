@@ -90,11 +90,8 @@ class SubCameraAnalyze(QRunnable):
     def analyze_frame(self):
         while True:
             frame = self.buffer_frame.get()
-            print(f" Length buffer frame: {self.buffer_frame.qsize()}")
             if frame is not None:
-                time_start_recognition = time.time()
                 image, list_image_label = self.analyze_video(frame)
-                time_end_recognition = time.time()
                 self.signals.updateUI.emit(list_image_label)
 
     def run(self):
@@ -105,7 +102,8 @@ class SubCameraAnalyze(QRunnable):
                 image = frame.copy()
                 self.index_frame += 1
                 self.face_analyzer.index_frame = self.index_frame  
-                self.buffer_frame.put(image)
+                if self.index_frame % 3 == 0:
+                    self.buffer_frame.put(image)
                 self.signals.result.emit(image) 
             else:
                 if not isinstance(self.video_path, int) and 'rtsp' not in self.video_path:
@@ -426,7 +424,7 @@ class SubCameraAnalyze(QRunnable):
                     self.list_total_id.append(guid)
                 else:
                     index = self.list_total_id.index(guid)
-                    if self.index_frame % 2 == 0:
+                    if self.index_frame % 3 == 0:
                         if label_name is not None:
                             self.list_person_model[index].list_face_name.append(label_name)
                             if len(self.list_person_model[index].list_face_name) > 50:
@@ -676,18 +674,18 @@ class CameraWidget(QWidget):
                 h_layout = QHBoxLayout()  # Create a QHBoxLayout for each row
                 recognition_image = cv2.imread(list_image_label[i][0])
                 if recognition_image.shape[0] >recognition_image.shape[1]:
-                    recognite_image = cv2.resize(recognite_image, (128, 128*recognite_image.shape[0]//recognite_image.shape[1]))
+                    recognition_image = cv2.resize(recognition_image, (128, 128*recognition_image.shape[1]//recognition_image.shape[0]))
                 else:
-                    recognite_image = cv2.resize(recognite_image, (128*recognite_image.shape[1]//recognite_image.shape[0], 128))
+                    recognition_image = cv2.resize(recognition_image, (128*recognition_image.shape[0]//recognition_image.shape[1], 128))
                 recognition_image = cv2.cvtColor(recognition_image, cv2.COLOR_BGR2RGB)
-                recognite_image = QImage(recognition_image, recognition_image.shape[1], recognition_image.shape[0], recognition_image.shape[2]*recognition_image.shape[1], QImage.Format_RGB888)
+                recognition_image = QImage(recognition_image, recognition_image.shape[1], recognition_image.shape[0], recognition_image.shape[2]*recognition_image.shape[1], QImage.Format_RGB888)
                 image_label = QLabel(f"Label {i * 2 + 1}")
 
                 if list_image_label[i][1] is not None and list_image_label[i][1] != "":
                     image_label.setStyleSheet("border: 1px solid green; border-radius: 5px; margin-bottom: 5px;")
                 else:
                     image_label.setStyleSheet("border: 1px solid red; border-radius: 5px; margin-bottom: 5px;")
-                image_label.setPixmap(QPixmap.fromImage(recognite_image))
+                image_label.setPixmap(QPixmap.fromImage(recognition_image))
                 # image_label.setScaledContents(True)
                 text_label = QLabel(f"Label {i * 2 + 2}")
                 text_label.setStyleSheet("border: 1px solid gray; border-radius: 5px; margin-bottom: 5px;")
@@ -700,7 +698,7 @@ class CameraWidget(QWidget):
                 h_layout.addWidget(text_label)
                 self.ref_layout.insertLayout(0, h_layout)
                 while self.ref_layout.count() > 50:
-                    item = self.ref_layout.takeAt(50)
+                    item = self.ref_layout.takeAt(0)
                     if item:
                         item.widget().deleteLater()
         except Exception as e:

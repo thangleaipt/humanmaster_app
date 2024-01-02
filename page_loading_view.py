@@ -257,14 +257,29 @@ class ImportThread(QThread):
                         time_target = time_start.addSecs(int(int(report['time'])/5))
                         time_string = time_target.toString(date_time_format)
                         self.report.tableWidget.setItem(i, 6, QTableWidgetItem(str(time_string)))
-                        if len(report['images']) > 0:
-                                image_path = report['images'][0]['path']
-
+                        image_path = None
+                        list_path_face_image = []
+                        list_path_person_image = []
+                        for image_class in report['images']:
+                                image_path = image_class['path']
+                                if 'face' in os.path.basename(image_path):
+                                        list_path_face_image.append(image_path)
+                                elif 'person' in os.path.basename(image_path):
+                                        list_path_person_image.append(image_path)
+                        if len(list_path_face_image) > 0:
+                                image_path = list_path_face_image[len(list_path_face_image)//2]
+                        elif len(list_path_person_image) > 0:
+                                image_path = list_path_person_image[len(list_path_person_image)//2]
+                        if image_path is not None:
+                                
                                 image = cv2.imread(image_path)
+                                if image.shape[0] > image.shape[1]:
+                                        image = cv2.resize(image, (128, 128*image.shape[0]//image.shape[1]))
+                                else:
+                                        image = cv2.resize(image, (128*image.shape[1]//image.shape[0], 128))
                                 q_image = QImage(image.data, image.shape[1], image.shape[0], QImage.Format_BGR888)
                                 pixmap = QPixmap.fromImage(q_image)
-                                pixmap = pixmap.scaledToWidth(128, Qt.SmoothTransformation).scaledToHeight(128, Qt.SmoothTransformation)
-                                
+
                                 item = QTableWidgetItem()
                                 item.setData(Qt.DecorationRole, pixmap)
                                 self.report.tableWidget.setItem(i, 7, item)
