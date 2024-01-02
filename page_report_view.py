@@ -605,6 +605,7 @@ class PAGEREPORT(QDialog):
                         list_path_face_image = []
                         list_path_person_image = []
                         # List face image
+                        image_path = None
                         for image_class in report['images']:
                                 image_path = image_class['path']
                                 if 'face' in os.path.basename(image_path):
@@ -616,9 +617,14 @@ class PAGEREPORT(QDialog):
                         else:
                                 image_path = list_path_person_image[len(list_path_person_image)//2]
                         print(f"Length face: {len(list_path_face_image)} Length person: {len(list_path_person_image)} path: {image_path}")
-                        pixmap = QPixmap(image_path).scaledToWidth(128, Qt.SmoothTransformation).scaledToHeight(128, Qt.SmoothTransformation)
-                        item = QTableWidgetItem()
-                        item.setData(Qt.DecorationRole, pixmap)
+                        if image_path is not None:
+                                image = cv2.imread(image_path)
+                                q_image = QImage(image.data, image.shape[1], image.shape[0], QImage.Format_BGR888)
+                                pixmap = QPixmap.fromImage(q_image)
+                                pixmap = pixmap.scaledToWidth(128, Qt.SmoothTransformation).scaledToHeight(128, Qt.SmoothTransformation)
+                                item = QTableWidgetItem()
+                                item.setData(Qt.DecorationRole, pixmap)
+                                
                         self.tableWidget.setItem(i, 7, item)
                         self.tableWidget.setRowHeight(i, pixmap.height())
                         self.tableWidget.setColumnWidth(4, pixmap.width() + 20)

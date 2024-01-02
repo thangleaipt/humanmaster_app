@@ -260,7 +260,11 @@ class ImportThread(QThread):
                         if len(report['images']) > 0:
                                 image_path = report['images'][0]['path']
 
-                                pixmap = QPixmap(image_path).scaledToWidth(128, Qt.SmoothTransformation).scaledToHeight(128, Qt.SmoothTransformation)
+                                image = cv2.imread(image_path)
+                                q_image = QImage(image.data, image.shape[1], image.shape[0], QImage.Format_BGR888)
+                                pixmap = QPixmap.fromImage(q_image)
+                                pixmap = pixmap.scaledToWidth(128, Qt.SmoothTransformation).scaledToHeight(128, Qt.SmoothTransformation)
+                                
                                 item = QTableWidgetItem()
                                 item.setData(Qt.DecorationRole, pixmap)
                                 self.report.tableWidget.setItem(i, 7, item)
