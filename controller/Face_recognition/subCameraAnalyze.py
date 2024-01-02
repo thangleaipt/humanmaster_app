@@ -90,6 +90,7 @@ class SubCameraAnalyze(QRunnable):
     def analyze_frame(self):
         while True:
             frame = self.buffer_frame.get()
+            print(f" Length buffer frame: {self.buffer_frame.qsize()}")
             if frame is not None:
                 time_start_recognition = time.time()
                 image, list_image_label = self.analyze_video(frame)
@@ -474,8 +475,9 @@ class SubCameraAnalyze(QRunnable):
                                 extend_face_image = cv2.resize(extend_face_image, (128, 128))
                                 cv2.imwrite(path_save_face_image, face_image)
                                 self.list_person_model[index].face_image = path_save_face_image
-                                
-                                list_image_label.append([path_save_face_image, label_name, position, age, gender, guid, main_color_clothes,label_mask, time_label])
+                                if self.list_person_model[index].counting_telegram < 5:
+                                    list_image_label.append([path_save_face_image, label_name, position, age, gender, guid, main_color_clothes,label_mask, time_label])
+                                    self.list_person_model[index].counting_telegram += 1
                                 if label_name is not None:
                                     self.list_person_model[index].role = 2
                                 else:
@@ -489,7 +491,9 @@ class SubCameraAnalyze(QRunnable):
                             self.list_person_model[index].person_image = path_save_person_image
                             if path_save_person_image not in self.list_person_model[index].list_image_path:
                                 self.list_person_model[index].list_image_path.append(path_save_person_image)
-                            list_image_label.append([path_save_person_image, label_name, position, age, gender, guid, main_color_clothes,label_mask, time_label])
+                            if self.list_person_model[index].counting_telegram < 5 and path_save_face_image == "":
+                                list_image_label.append([path_save_person_image, label_name, position, age, gender, guid, main_color_clothes,label_mask, time_label])
+                                self.list_person_model[index].counting_telegram += 1
                             if extend_face_image is None:
                                 self.list_person_model[index].role = 1
                         cv2.imwrite(path_image, image_save)
@@ -669,29 +673,36 @@ class CameraWidget(QWidget):
     def update_ui(self, list_image_label):
         try:
             for i in range(len(list_image_label)):
-                self.h_layout = QHBoxLayout()  # Create a QHBoxLayout for each row
-                self.recognition_image = cv2.imread(list_image_label[i][0])
-                self.recognition_image = cv2.resize(self.recognition_image, (128, 128*self.recognition_image.shape[0]//self.recognition_image.shape[1]))
-                self.recognition_image = cv2.cvtColor(self.recognition_image, cv2.COLOR_BGR2RGB)
-                self.recognite_image = QImage(self.recognition_image, self.recognition_image.shape[1], self.recognition_image.shape[0], self.recognition_image.shape[2]*self.recognition_image.shape[1], QImage.Format_RGB888)
-                self.image_label = QLabel(f"Label {i * 2 + 1}")
+                h_layout = QHBoxLayout()  # Create a QHBoxLayout for each row
+                recognition_image = cv2.imread(list_image_label[i][0])
+                if recognition_image.shape[0] >recognition_image.shape[1]:
+                    recognite_image = cv2.resize(recognite_image, (128, 128*recognite_image.shape[0]//recognite_image.shape[1]))
+                else:
+                    recognite_image = cv2.resize(recognite_image, (128*recognite_image.shape[1]//recognite_image.shape[0], 128))
+                recognition_image = cv2.cvtColor(recognition_image, cv2.COLOR_BGR2RGB)
+                recognite_image = QImage(recognition_image, recognition_image.shape[1], recognition_image.shape[0], recognition_image.shape[2]*recognition_image.shape[1], QImage.Format_RGB888)
+                image_label = QLabel(f"Label {i * 2 + 1}")
 
                 if list_image_label[i][1] is not None and list_image_label[i][1] != "":
-                    self.image_label.setStyleSheet("border: 1px solid green; border-radius: 5px; margin-bottom: 5px;")
+                    image_label.setStyleSheet("border: 1px solid green; border-radius: 5px; margin-bottom: 5px;")
                 else:
-                    self.image_label.setStyleSheet("border: 1px solid red; border-radius: 5px; margin-bottom: 5px;")
-                self.image_label.setPixmap(QPixmap.fromImage(self.recognite_image))
+                    image_label.setStyleSheet("border: 1px solid red; border-radius: 5px; margin-bottom: 5px;")
+                image_label.setPixmap(QPixmap.fromImage(recognite_image))
                 # image_label.setScaledContents(True)
-                self.text_label = QLabel(f"Label {i * 2 + 2}")
-                self.text_label.setStyleSheet("border: 1px solid gray; border-radius: 5px; margin-bottom: 5px;")
+                text_label = QLabel(f"Label {i * 2 + 2}")
+                text_label.setStyleSheet("border: 1px solid gray; border-radius: 5px; margin-bottom: 5px;")
             
                 if len(list_image_label[i]) > 1:
-                    self.text_label.setText(self.update_text(list_image_label[i]))
+                    text_label.setText(self.update_text(list_image_label[i]))
                 else:
-                    self.text_label.setText(f"")
-                self.h_layout.addWidget(self.image_label)
-                self.h_layout.addWidget(self.text_label)
-                self.ref_layout.insertLayout(0, self.h_layout)
+                    text_label.setText(f"")
+                h_layout.addWidget(image_label)
+                h_layout.addWidget(text_label)
+                self.ref_layout.insertLayout(0, h_layout)
+                while self.ref_layout.count() > 50:
+                    item = self.ref_layout.takeAt(50)
+                    if item:
+                        item.widget().deleteLater()
         except Exception as e:
             print(f"[update_ui]: {e}")
     
