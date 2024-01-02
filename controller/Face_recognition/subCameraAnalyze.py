@@ -674,18 +674,24 @@ class CameraWidget(QWidget):
                 h_layout = QHBoxLayout()  # Create a QHBoxLayout for each row
                 recognition_image = cv2.imread(list_image_label[i][0])
                 if recognition_image.shape[0] >recognition_image.shape[1]:
-                    recognition_image = cv2.resize(recognition_image, (128, 128*recognition_image.shape[1]//recognition_image.shape[0]))
+                    recognition_image = cv2.resize(recognition_image, (128*recognition_image.shape[1]//recognition_image.shape[0], 128))
                 else:
-                    recognition_image = cv2.resize(recognition_image, (128*recognition_image.shape[0]//recognition_image.shape[1], 128))
-                recognition_image = cv2.cvtColor(recognition_image, cv2.COLOR_BGR2RGB)
-                recognition_image = QImage(recognition_image, recognition_image.shape[1], recognition_image.shape[0], recognition_image.shape[2]*recognition_image.shape[1], QImage.Format_RGB888)
+                    recognition_image = cv2.resize(recognition_image, (128, 128*recognition_image.shape[0]//recognition_image.shape[1]))
+                image = cv2.cvtColor(recognition_image, cv2.COLOR_BGR2RGB)
+                # Convert image to QImage
+                height, width, channel = image.shape
+                bytes_per_line = 3 * width
+                q_image = QImage(image.data, width, height, bytes_per_line, QImage.Format_RGB888)
+
+                # Set the image to the QLabel
+                pixmap = QPixmap.fromImage(q_image)
                 image_label = QLabel(f"Label {i * 2 + 1}")
 
                 if list_image_label[i][1] is not None and list_image_label[i][1] != "":
                     image_label.setStyleSheet("border: 1px solid green; border-radius: 5px; margin-bottom: 5px;")
                 else:
                     image_label.setStyleSheet("border: 1px solid red; border-radius: 5px; margin-bottom: 5px;")
-                image_label.setPixmap(QPixmap.fromImage(recognition_image))
+                image_label.setPixmap(pixmap)
                 # image_label.setScaledContents(True)
                 text_label = QLabel(f"Label {i * 2 + 2}")
                 text_label.setStyleSheet("border: 1px solid gray; border-radius: 5px; margin-bottom: 5px;")

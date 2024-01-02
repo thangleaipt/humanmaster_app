@@ -621,10 +621,14 @@ class PAGEREPORT(QDialog):
                         if image_path is not None:
                                 image = cv2.imread(image_path)
                                 if image.shape[0] > image.shape[1]:
-                                        image = cv2.resize(image, (128, 128*image.shape[0]//image.shape[1]))
+                                        image = cv2.resize(image, (128*image.shape[0]//image.shape[1], 128 ))
                                 else:
-                                        image = cv2.resize(image, (128*image.shape[1]//image.shape[0], 128))
-                                q_image = QImage(image.data, image.shape[1], image.shape[0], QImage.Format_BGR888)
+                                        image = cv2.resize(image, (128, 128*image.shape[1]//image.shape[0]))
+                                image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+                                # Convert image to QImage
+                                height, width, channel = image.shape
+                                bytes_per_line = 3 * width
+                                q_image = QImage(image.data, width, height, bytes_per_line, QImage.Format_RGB888)
                                 pixmap = QPixmap.fromImage(q_image)
                                 item = QTableWidgetItem()
                                 item.setData(Qt.DecorationRole, pixmap)
