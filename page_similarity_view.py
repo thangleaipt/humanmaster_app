@@ -9,6 +9,7 @@ from PySide2.QtWidgets import *
 import cv2
 import moviepy.editor as mp
 from PySide2.QtGui import (QPixmap,QImage)
+import torch
 
 
 class PAGESIMILARITY(QWidget):
@@ -32,7 +33,7 @@ class PAGESIMILARITY(QWidget):
         self.list_close_button = {}
     
         # Add video button
-        self.add_image_button = QPushButton("Add Image")
+        self.add_image_button = QPushButton("Upload Ảnh")
         self.add_image_button.setStyleSheet(u"QPushButton {\n"
                 "	border: 2px solid rgb(27, 29, 35);\n"
                 "	border-radius: 5px;	\n"
@@ -52,7 +53,7 @@ class PAGESIMILARITY(QWidget):
         self.add_image_button.clicked.connect(self.show_dialog_image)
         self.add_button_layout.addWidget(self.add_image_button)
 
-        self.delete_image_button = QPushButton("Delete Image")
+        self.delete_image_button = QPushButton("Xóa Ảnh")
         icon3 = QIcon()
         icon3.addFile(u":/16x16/icons/16x16/cil-remove.png", QSize(), QIcon.Normal, QIcon.Off)
         self.delete_image_button.setIcon(icon3)
@@ -77,6 +78,8 @@ class PAGESIMILARITY(QWidget):
         for key in self.list_camera_screen.keys():
             self.grid_layout.removeWidget(self.list_camera_screen[key])
             self.list_camera_screen[key].deleteLater()
+
+        torch.cuda.empty_cache()
 
         self.list_camera_screen = {}
         self.list_camera = []
@@ -111,18 +114,26 @@ class PAGESIMILARITY(QWidget):
                 if max_similarity < similarity:
                     max_similarity = similarity
                     box = feature[0]
-            if max_similarity < 0.45:
-                QMessageBox.warning(self, "Warning", "Two images are not similar enough") 
+            if max_similarity < 0.35:
+                QMessageBox.warning(self, "Warning", "Hai ảnh có khuôn mặt không giống nhau", QMessageBox.Ok) 
                 self.list_camera_screen[self.list_camera[1]].setPixmap(QPixmap(""))
+                self.list_camera_screen[self.list_camera[1]].deleteLater()
             else:
-                persentage = max_similarity * 100
+                percentage = max_similarity * 100
                 image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-                cv2.rectangle(image, (int(box[0]), int(box[1])), (int(box[2]), int(box[3])), (0, 0, 255), 2)
-                cv2.putText(image, f"{persentage:.2f}%", (int(box[0]), int(box[1])-10), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 2)
+                if percentage < 50:
+                    color_box = (0,0,255)
+                elif percentage < 70 and percentage >= 50:
+                    color_box = (255,255,0)
+                else:
+                    color_box = (0,255,0)
+                cv2.rectangle(image, (int(box[0]), int(box[1])), (int(box[2]), int(box[3])), color_box, 2)
+                cv2.rectangle(image, (int(box[0]), int(box[1])), (int(box[2]), int(box[3])), color_box, 2)
+                cv2.putText(image, f"{percentage:.2f}%", (int(box[0]), int(box[1])-10), cv2.FONT_HERSHEY_SIMPLEX, 1, color_box, 2)
                 q_image_update = QImage(image.data, w, h, bytes_per_line, QImage.Format_RGB888)
                 pixmap_update = QPixmap.fromImage(q_image_update)
                 self.list_camera_screen[self.list_camera[1]].setPixmap(QPixmap(pixmap_update))
-                print(f"Distance 2 image: {persentage}")
+                print(f"Distance 2 image: {percentage}")
   
     def resizeEvent(self, event):
         # Override the resizeEvent to handle window resize
@@ -134,32 +145,35 @@ class PAGESIMILARITY(QWidget):
         super().resizeEvent(event)
 
     def show_dialog_image(self):
-        file_dialog = QFileDialog()
-        file_dialog.setNameFilter("Image files (*.jpeg *.jpg *.png)")
-        file_dialog.setFileMode(QFileDialog.ExistingFile)
-        file_dialog.setViewMode(QFileDialog.Detail)
+        if len(self.list_camera) < 2:
+            file_dialog = QFileDialog()
+            file_dialog.setNameFilter("Image files (*.jpeg *.jpg *.png)")
+            file_dialog.setFileMode(QFileDialog.ExistingFile)
+            file_dialog.setViewMode(QFileDialog.Detail)
 
-        if file_dialog.exec_():
-            file_path = file_dialog.selectedFiles()
-            if file_path:
-                print("Selected file:", file_path[0])
-                self.list_camera.append(file_path[0])
-                if len(self.list_camera) > 0:
-                    self.delete_image_button.setEnabled(True)
-                    self.delete_image_button.setStyleSheet(u"QPushButton {\n"
-                            "	border: 2px solid rgb(27, 29, 35);\n"
-                            "	border-radius: 5px;	\n"
-                            "	background-color: rgb(27, 29, 35);\n"
-                            "}\n"
-                            "QPushButton:hover {\n"
-                            "	background-color: rgb(57, 65, 80);\n"
-                            "	border: 2px solid rgb(61, 70, 86);\n"
-                            "}\n"
-                            "QPushButton:pressed {	\n"
-                            "	background-color: rgb(35, 40, 49);\n"
-                            "	border: 2px solid rgb(43, 50, 61);\n"
-                            "}")
+            if file_dialog.exec_():
+                file_path = file_dialog.selectedFiles()
+                if file_path:
+                    print("Selected file:", file_path[0])
+                    self.list_camera.append(file_path[0])
+                    if len(self.list_camera) > 0:
+                        self.delete_image_button.setEnabled(True)
+                        self.delete_image_button.setStyleSheet(u"QPushButton {\n"
+                                "	border: 2px solid rgb(27, 29, 35);\n"
+                                "	border-radius: 5px;	\n"
+                                "	background-color: rgb(27, 29, 35);\n"
+                                "}\n"
+                                "QPushButton:hover {\n"
+                                "	background-color: rgb(57, 65, 80);\n"
+                                "	border: 2px solid rgb(61, 70, 86);\n"
+                                "}\n"
+                                "QPushButton:pressed {	\n"
+                                "	background-color: rgb(35, 40, 49);\n"
+                                "	border: 2px solid rgb(43, 50, 61);\n"
+                                "}")
                 self.init_camera()
+        else:
+            QMessageBox.warning(self, "Warning", "Đã thêm 2 ảnh", QMessageBox.Ok)
        
 
             

@@ -94,6 +94,7 @@ class PAGEREPORT(QDialog):
         def __init__(self, index, time, analyzer, path_video):
                 super().__init__()
                 self.list_reports_filter = []
+                self.list_reports = []
                 self.list_file_path = []
                 self.counter = 0
                 self.video_id = index
@@ -135,7 +136,7 @@ class PAGEREPORT(QDialog):
                 self.date_time_start_layout.addSpacing(2)
                 self.dateTimeEdit_start = QDateTimeEdit(self.filter_groupbox)
                 self.dateTimeEdit_start.setObjectName(u"dateTimeEdit_start")
-                self.dateTimeEdit_start.setFixedSize(150, 50)
+                self.dateTimeEdit_start.setFixedHeight(50)
                 self.dateTimeEdit_start.setDisplayFormat("yyyy-MM-dd HH:mm:ss")
                 start_date = QDateTime.fromString(self.time, date_time_format)
                 start_date.setTime(QTime(0, 0, 0))
@@ -151,7 +152,7 @@ class PAGEREPORT(QDialog):
                 self.date_time_end_layout.addSpacing(2)
                 self.dateTimeEdit_end = QDateTimeEdit(self.filter_groupbox)
                 self.dateTimeEdit_end.setObjectName(u"dateTimeEdit_end")
-                self.dateTimeEdit_end.setFixedSize(150, 50)
+                self.dateTimeEdit_end.setFixedHeight(50)
                 self.dateTimeEdit_end.setDisplayFormat("yyyy-MM-dd HH:mm:ss")
                 end_date = QDateTime.fromString(self.time, date_time_format)
                 end_date.setTime(QTime(0, 0, 0))
@@ -169,7 +170,7 @@ class PAGEREPORT(QDialog):
                 self.gender_layout.addSpacing(2)
                 self.gender_combobox = QComboBox(self.filter_groupbox)
                 self.gender_combobox.setObjectName(u"gender_combobox")
-                self.gender_combobox.setFixedSize(100, 50)
+                self.gender_combobox.setFixedHeight(50)
                 self.gender_combobox.addItems(["Tất cả", "Nam", "Nữ"])
                 self.gender_layout.addWidget(self.gender_combobox)
                 self.filter_layout.addLayout(self.gender_layout)
@@ -181,7 +182,7 @@ class PAGEREPORT(QDialog):
                 self.age_layout.addSpacing(2)
                 self.age_combobox = QComboBox(self.filter_groupbox)
                 self.age_combobox.setObjectName(u"age_box")
-                self.age_combobox.setFixedSize(100, 50)
+                self.age_combobox.setFixedHeight(50)
                 self.age_combobox.addItems(["Tất cả","0-20", "21-40", "41-60", "61-80", "81-100"])
                 self.age_layout.addWidget(self.age_combobox)
                 self.filter_layout.addLayout(self.age_layout)
@@ -193,7 +194,7 @@ class PAGEREPORT(QDialog):
                 self.mask_layout.addSpacing(2)
                 self.mask_combobox = QComboBox(self.filter_groupbox)
                 self.mask_combobox.setObjectName(u"mask_box")
-                self.mask_combobox.setFixedSize(100, 50)
+                self.mask_combobox.setFixedHeight(50)
                 self.mask_combobox.addItems(["Tất cả", "Đeo khẩu trang", "Không đeo khẩu trang"])
                 self.mask_layout.addWidget(self.mask_combobox)
                 self.filter_layout.addLayout(self.mask_layout)
@@ -205,7 +206,7 @@ class PAGEREPORT(QDialog):
                 self.checkface_layout.addSpacing(2)
                 self.checkface_combobox = QComboBox(self.filter_groupbox)
                 self.checkface_combobox.setObjectName(u"mask_box")
-                self.checkface_combobox.setFixedSize(100, 50)
+                self.checkface_combobox.setFixedHeight(50)
                 self.checkface_combobox.addItems(["Tất cả", "Mặt trước", "Mặt sau"])
                 self.checkface_layout.addWidget(self.checkface_combobox)
                 self.filter_layout.addLayout(self.checkface_layout)
@@ -214,7 +215,7 @@ class PAGEREPORT(QDialog):
                 # Buton Search
                 self.search_button = QPushButton("Tìm kiếm", self.filter_groupbox)
                 self.search_button.setObjectName(u"search_button")
-                self.search_button.setFixedSize(100, 50)
+                self.search_button.setFixedHeight(50)
                 self.filter_layout.addWidget(self.search_button)
                 self.search_button.setStyleSheet(u"QPushButton {\n"
                 "	border: 2px solid rgb(27, 29, 35);\n"
@@ -237,7 +238,7 @@ class PAGEREPORT(QDialog):
                  # Buton Search
                 self.import_button = QPushButton("Lọc ảnh", self.filter_groupbox)
                 self.import_button.setObjectName(u"import_button")
-                self.import_button.setFixedSize(100, 50)
+                self.import_button.setFixedHeight(50)
                 self.filter_layout.addWidget(self.import_button)
                 self.import_button.setStyleSheet(u"QPushButton {\n"
                 "	border: 2px solid rgb(27, 29, 35);\n"
@@ -260,7 +261,7 @@ class PAGEREPORT(QDialog):
                 # Export report
                 self.export_button = QPushButton("Xuất File", self.filter_groupbox)
                 self.export_button.setObjectName(u"import_button")
-                self.export_button.setFixedSize(100, 50)
+                self.export_button.setFixedHeight(50)
                 self.filter_layout.addWidget(self.export_button)
                 self.export_button.setStyleSheet(u"QPushButton {\n"
                 "	border: 2px solid rgb(27, 29, 35);\n"
@@ -621,9 +622,9 @@ class PAGEREPORT(QDialog):
                         if image_path is not None:
                                 image = cv2.imread(image_path)
                                 if image.shape[0] > image.shape[1]:
-                                        image = cv2.resize(image, (128*image.shape[0]//image.shape[1], 128 ))
+                                        image = cv2.resize(image, (128*image.shape[1]//image.shape[0], 128 ))
                                 else:
-                                        image = cv2.resize(image, (128, 128*image.shape[1]//image.shape[0]))
+                                        image = cv2.resize(image, (128, 128*image.shape[0]//image.shape[1]))
                                 image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
                                 # Convert image to QImage
                                 height, width, channel = image.shape

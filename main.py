@@ -16,13 +16,17 @@
 
 import sys
 import platform
+from datetime import datetime
+import time
 from PySide2 import QtCore, QtGui, QtWidgets
 from PySide2.QtCore import (QCoreApplication, QPropertyAnimation, QDate, QDateTime, QMetaObject, QObject, QPoint, QRect, QSize, QTime, QUrl, Qt, QEvent)
-from PySide2.QtGui import (QBrush, QColor, QConicalGradient, QCursor, QFont, QFontDatabase, QIcon, QKeySequence, QLinearGradient, QPalette, QPainter, QPixmap, QRadialGradient)
+from PySide2.QtGui import (QBrush, QColor, QConicalGradient, QCursor, QFont,QKeyEvent, QFontDatabase, QIcon, QKeySequence, QLinearGradient, QPalette, QPainter, QPixmap, QRadialGradient)
 from PySide2.QtWidgets import *
 from ui_Formlogin import Login
 # GUI FILE
 from app_modules import *
+from check_user import verify_authorization, verify_login
+from server import create_db
 
 class LoginWindow(QMainWindow):
     def __init__(self):
@@ -74,12 +78,30 @@ class LoginWindow(QMainWindow):
         print("click button close")
         self.close()
 
+    def keyPressEvent(self, event: QKeyEvent) -> None:
+        if event.key() == Qt.Key_Enter or event.key() == Qt.Key_Return:
+            self.click_login()
     def click_login(self):
         print("click button login")
-        # Hide login
-        self.hide()
-        window = MainWindow()
-        window.show()
+        user = self.ui.lineEdit_Login.text()
+        password = self.ui.lineEdit_Password.text()
+        response = verify_login(user, password)
+        verify = response['verify_status']
+        message = response['message']
+        target_date = datetime(2024, 1, 13, 0, 0, 0)
+        target_timestamp = target_date.timestamp()
+        current_timestamp = time.time()
+        if current_timestamp < target_timestamp:
+            if verify is True:
+            # Hide login
+                self.close()
+                window = MainWindow()
+                window.show()
+            else:
+                QMessageBox.warning(self, "Lỗi đăng nhập", f"{message}", QMessageBox.Ok)
+        else: 
+            QMessageBox.warning(self, "Hết hạn đăng nhập")
+        
 
     def mousePressEvent(self, event):
         self.drag_pos = event.globalPos()
@@ -118,12 +140,12 @@ class MainWindow(QMainWindow):
         ## ==> ADD CUSTOM MENUS
         self.ui.stackedWidget.setMinimumWidth(30)
         UIFunctions.addNewMenu(self, "CAMERA", "btn_camera", "url(:/16x16/icons/16x16/cil-camera.png)", True)
-        UIFunctions.addNewMenu(self, "VIDEO", "btn_video", "url(:/16x16/icons/16x16/cil-movie.png)", True)
-        UIFunctions.addNewMenu(self, "IMAGE", "btn_image", "url(:/16x16/icons/16x16/cil-image1.png)", True)
-        UIFunctions.addNewMenu(self, "SIMILARITY", "btn_similarity", "url(:/16x16/icons/16x16/cil-people.png)", True)
-        UIFunctions.addNewMenu(self, "USER", "btn_new_user", "url(:/16x16/icons/16x16/cil-user-follow.png)", True)
-        UIFunctions.addNewMenu(self, "Custom Widgets", "btn_widgets", "url(:/16x16/icons/16x16/cil-equalizer.png)", False)
-        # UIFunctions.addNewMenu(self, "REPORT", "btn_report", "url(:/16x16/icons/16x16/cil-chart-pie.png)", False)
+        # UIFunctions.addNewMenu(self, "VIDEO", "btn_video", "url(:/16x16/icons/16x16/cil-movie.png)", True)
+        UIFunctions.addNewMenu(self, "ẢNH", "btn_image", "url(:/16x16/icons/16x16/cil-image1.png)", True)
+        UIFunctions.addNewMenu(self, "XÁC MINH", "btn_similarity", "url(:/16x16/icons/16x16/cil-people.png)", True)
+        UIFunctions.addNewMenu(self, "ĐỐI TƯỢNG", "btn_new_user", "url(:/16x16/icons/16x16/cil-user-follow.png)", True)
+        UIFunctions.addNewMenu(self, "BÁO CÁO", "btn_report", "url(:/16x16/icons/16x16/cil-equalizer.png)", False)
+        # UIFunctions.addNewMenu(self, "TELEGRAM", "btn_telegram", "url(:/16x16/icons/16x16/cil-chart-pie.png)", False)
         ## ==> END ##
 
         # START MENU => SELECTION
@@ -210,37 +232,42 @@ class MainWindow(QMainWindow):
             UIFunctions.labelPage(self, "camera")
             btnWidget.setStyleSheet(UIFunctions.selectMenu(btnWidget.styleSheet()))
 
-        if btnWidget.objectName() == "btn_video":
-            self.ui.stackedWidget.setCurrentWidget(self.ui.page_video)
-            UIFunctions.resetStyle(self, "btn_video")
-            UIFunctions.labelPage(self, "video")
-            btnWidget.setStyleSheet(UIFunctions.selectMenu(btnWidget.styleSheet()))
+        # if btnWidget.objectName() == "btn_video":
+        #     self.ui.stackedWidget.setCurrentWidget(self.ui.page_video)
+        #     UIFunctions.resetStyle(self, "btn_video")
+        #     UIFunctions.labelPage(self, "video")
+        #     btnWidget.setStyleSheet(UIFunctions.selectMenu(btnWidget.styleSheet()))
 
         if btnWidget.objectName() == "btn_image":
             self.ui.stackedWidget.setCurrentWidget(self.ui.page_image)
             UIFunctions.resetStyle(self, "btn_image")
-            UIFunctions.labelPage(self, "image")
+            UIFunctions.labelPage(self, "ẢNH")
             btnWidget.setStyleSheet(UIFunctions.selectMenu(btnWidget.styleSheet()))
 
         if btnWidget.objectName() == "btn_similarity":
             self.ui.stackedWidget.setCurrentWidget(self.ui.page_similarity)
             UIFunctions.resetStyle(self, "btn_similarity")
-            UIFunctions.labelPage(self, "similarity")
+            UIFunctions.labelPage(self, "XÁC MINH")
             btnWidget.setStyleSheet(UIFunctions.selectMenu(btnWidget.styleSheet()))
 
         # PAGE NEW USER
         if btnWidget.objectName() == "btn_new_user":
             self.ui.stackedWidget.setCurrentWidget(self.ui.add_user)
             UIFunctions.resetStyle(self, "btn_new_user")
-            UIFunctions.labelPage(self, "New User")
+            UIFunctions.labelPage(self, "ĐỐI TƯỢNG")
             btnWidget.setStyleSheet(UIFunctions.selectMenu(btnWidget.styleSheet()))
   
-
         # PAGE WIDGETS
-        if btnWidget.objectName() == "btn_widgets":
+        if btnWidget.objectName() == "btn_report":
             self.ui.stackedWidget.setCurrentWidget(self.ui.page_widgets)
-            UIFunctions.resetStyle(self, "btn_widgets")
-            UIFunctions.labelPage(self, "Custom Widgets")
+            UIFunctions.resetStyle(self, "btn_report")
+            UIFunctions.labelPage(self, "BÁO CÁO")
+            btnWidget.setStyleSheet(UIFunctions.selectMenu(btnWidget.styleSheet()))
+
+        if btnWidget.objectName() == "btn_telegram":
+            self.ui.stackedWidget.setCurrentWidget(self.ui.page_telegram)
+            UIFunctions.resetStyle(self, "btn_telegram")
+            UIFunctions.labelPage(self, "TELEGRAM")
             btnWidget.setStyleSheet(UIFunctions.selectMenu(btnWidget.styleSheet()))
 
     ## ==> END ##
@@ -297,6 +324,7 @@ def init_app():
     app = QApplication(sys.argv)
     QtGui.QFontDatabase.addApplicationFont('fonts/segoeui.ttf')
     QtGui.QFontDatabase.addApplicationFont('fonts/segoeuib.ttf')
+
     login_window = LoginWindow()
     sys.exit(app.exec_())
 

@@ -15,3 +15,7 @@ class ReportsSchema(ma.Schema):
 class ImagesSchema(ma.Schema):
   class Meta:
     fields = ("id", "path")
+
+class TelegramsSchema(ma.Schema):
+  class Meta:
+    fields = ("id", "name", "status", "chat_id", "user_created")

@@ -5,6 +5,7 @@ import queue
 import threading
 import time
 import uuid
+import torch
 
 from unidecode import unidecode
 from collections import Counter
@@ -23,6 +24,7 @@ from PySide2.QtWidgets import *
 from config import STATIC_FOLDER
 from PySide2.QtCore import QRunnable, Signal, QObject
 import numpy as np
+from server.extension import db_session
 
 from PySide2.QtCore import (QCoreApplication, QMetaObject, QObject, QPoint,
     QRect, QSize, QUrl, Qt,QThreadPool,QThread)
@@ -31,6 +33,8 @@ from PySide2.QtGui import (QBrush, QColor, QConicalGradient, QCursor, QFont,
     QFontDatabase, QIcon, QLinearGradient, QPalette, QPainter,QPixmap,QImage,
     QRadialGradient)
 from scipy.optimize import linear_sum_assignment
+
+from server.telegrams.services import get_telegrams
 class CameraWorkerSignals(QObject):
     result = Signal(np.ndarray)
     finished = Signal()
@@ -62,6 +66,8 @@ class SubCameraAnalyze(QRunnable):
 
         self.is_running = True
         self.index_frame = 0
+        self.telegram_buffer = queue.Queue()
+        # self.telegrams = get_telegrams()
 
         self.list_person_model = []
         self.list_total_id = []
@@ -86,6 +92,7 @@ class SubCameraAnalyze(QRunnable):
         # self.output_video = cv2.VideoWriter(f"{path_dir}\\output.mp4",cv2.VideoWriter_fourcc(*'mp4v'), self.fps, (self.frame_width, self.frame_height))
         self.thread_analyze = threading.Thread(target=self.analyze_frame)
         self.thread_analyze = self.thread_analyze.start()
+    
     
     def analyze_frame(self):
         while True:
@@ -130,7 +137,7 @@ class SubCameraAnalyze(QRunnable):
             self.is_running = False
             self.video_capture.release()
             self.video_capture = None
-            # self.output_video.release()
+            torch.cuda.empty_cache()
             
         list_thread = threading.enumerate()
         print(f"Active thread names: {', '.join([thread.name for thread in list_thread])}")
@@ -297,7 +304,7 @@ class SubCameraAnalyze(QRunnable):
                     label_mask = instance[6]
 
                     box_face = [int(box_face[0]), int(box_face[1]), int(box_face[2]), int(box_face[3])]
-                    face_image = image[max(box_face[1],0):min(box_face[3]+box_face[1], frame.shape[0]), max(box_face[0],0):min(box_face[2]+box_face[0], frame.shape[1])]
+                    face_image = image[max(box_face[1],0):min(box_face[3], frame.shape[0]), max(box_face[0],0):min(box_face[2], frame.shape[1])]
                     box_face_plot = [box_face[0], box_face[1], box_face[2], box_face[3]]
                     
                     if face_image is None or face_image.shape[0] == 0 or face_image.shape[1] == 0:
@@ -453,7 +460,7 @@ class SubCameraAnalyze(QRunnable):
                     self.list_person_model[index].counting_tracking += 1
 
                     # Send telegram
-                    if (self.list_person_model[index].counting_tracking % 5 == 0 or self.list_person_model[index].counting_tracking == 1 or (self.list_person_model[index].label_name != label_name and label_name is not None)):
+                    if (self.list_person_model[index].counting_tracking % 2 == 0 or self.list_person_model[index].counting_tracking == 1 or (self.list_person_model[index].label_name != label_name and label_name is not None)):
                         if label_name is not None:
                             self.list_person_model[index].label_name = label_name
                         if gender is not None:
@@ -490,18 +497,19 @@ class SubCameraAnalyze(QRunnable):
                             if path_save_person_image not in self.list_person_model[index].list_image_path:
                                 self.list_person_model[index].list_image_path.append(path_save_person_image)
                             if self.list_person_model[index].counting_telegram < 5 and path_save_face_image == "":
+                                if self.list_person_model[index].counting_telegram < 5:
+                                    # self.telegram_buffer.put([path_image, self.list_person_model[index], self.telegrams])
+                                    self.list_person_model[index].counting_telegram += 1
+
                                 list_image_label.append([path_save_person_image, label_name, position, age, gender, guid, main_color_clothes,label_mask, time_label])
                                 self.list_person_model[index].counting_telegram += 1
                             if extend_face_image is None:
                                 self.list_person_model[index].role = 1
                         cv2.imwrite(path_image, image_save)
                         self.list_person_model[index].list_image_path.append(path_image)
-                        # if self.list_person_model[index].counting_telegram < 5:
-                        # self.telegram_buffer.put([path_image, self.list_person_model[index], self.telegrams])
-                        # self.list_person_model[index].counting_telegram += 1
             
             # Send data to report
-            if self.index_frame % 1000 == 0:
+            if self.index_frame % 500 == 0:
                 logging.info(f"[analyze_video][index_frame] Send data to report: {self.index_frame}, {len(self.list_person_model)}")
                 if len(self.list_person_model) > 0:
                     self.send_report_to_db()
@@ -514,6 +522,67 @@ class SubCameraAnalyze(QRunnable):
             print(f'[{datetime.now().strftime(DATETIME_FORMAT)}][analyze][generate_frames]: {e}')
             logging.exception(f'[analyze][generate_frames]: {e}')
             return image,[]
+        
+    def telegram_send_img_message(self):
+        try:
+      # for telegram in telegrams:
+            while True:
+                img_path, person_model, telegrams = self.telegram_buffer.get()
+                print(f"Telegram send image: {img_path}")
+                text_send = f"*Camera: {self.name_camera}*\n"
+                text_send += f"ID: _{person_model.id}_\n"
+      
+                if person_model.label_name is not None and person_model.label_name != "":
+                    text_send += f"Tên: *{person_model.label_name}*\n"
+                else:
+                    if person_model.role == 1:
+                        text_send += f"Tên: Người không xác định\n"
+                    elif person_model.role == 0:
+                        text_send += f"Nhân viên: Người lạ\n"
+
+                if person_model.average_check_mask is not None and person_model.average_check_mask == 1:
+                    text_send += f"Đeo khẩu trang: _Có_\n"
+                elif person_model.average_check_mask is not None and person_model.average_check_mask == 0:
+                    text_send += f"Đeo khẩu trang: _Không_\n"
+                else:
+                    text_send += f"Đeo khẩu trang: _Không xác định_\n"
+                if person_model.average_age is not None:
+                    if person_model.start_age is None:
+                        person_model.start_age = 0
+                    if person_model.end_age is None:
+                        person_model.end_age = 0
+                    text_send += f"Tuổi: _{int(person_model.start_age)}_ - _{int(person_model.end_age)}_\n"
+                else:
+                    text_send += f"Tuổi: _Không xác định_\n"
+                if person_model.average_gender != "" and person_model.average_gender is not None:
+                    if person_model.average_gender is not None:
+                        gender = person_model.average_gender
+                    if gender == "male" or gender[0] == "male":
+                        text_send += f"Giới tính: _Nam_\n"
+                    elif gender == "female" or gender[0] == "female":
+                        text_send += f"Giới tính: _Nữ_\n"
+                else:
+                    text_send += f"Giới tính: _Không xác định_\n"
+                if person_model.name_color != "" and person_model.name_color is not None:
+                    text_send += f"Màu trang phục: _{person_model.name_color}_\n"
+                else:
+                    text_send += f"Màu trang phục: _Không xác định_\n"
+
+                text_send += f"Thời gian nhận diện: _{person_model.time}_\n"
+
+                for telegram in telegrams:
+                    try:
+                        time_start = time.time()
+                        self.bot.sendPhoto(telegram.chat_id, photo=open(img_path, 'rb'), caption=text_send, parse_mode= 'Markdown')
+                        time_end = time.time()
+                        logging.info(f"time telegram: {time_end - time_start}s")
+                    except Exception as ex:
+                        print(f"Exception[send_telegram_message]: {ex}")
+                        logging.error(f"Exception[send_telegram_message]: {ex}")
+                self.telegram_buffer.task_done()
+        except Exception as ex:
+            print(f"Exception[telegram_send_img_message]: {ex}")
+            logging.error(f"Exception[telegram_send_img_message]: {ex}")
         
     def send_report_to_db(self):
         try:
@@ -596,7 +665,7 @@ class CameraWidget(QWidget):
 
         self.camera_label.setObjectName(u"camera_label_{}".format(index))
         self.camera_label.setStyleSheet("border: 2px solid red;")
-        self.camera_label.setText("Loading...")
+        self.camera_label.setText("Loading model nhận diện")
 
         self.close_button.clicked.connect(self.stop_camera)
         self.camera_label.setAlignment(Qt.AlignCenter)
@@ -656,7 +725,7 @@ class CameraWidget(QWidget):
     def display_image(self, frame):
         # Display the captured frame
         if frame is None:
-            self.camera_label.setText("No frame")
+            self.camera_label.setText("No Frame")
             return
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         h, w, ch = frame.shape
@@ -703,16 +772,13 @@ class CameraWidget(QWidget):
                 h_layout.addWidget(image_label)
                 h_layout.addWidget(text_label)
                 self.ref_layout.insertLayout(0, h_layout)
-                while self.ref_layout.count() > 50:
-                    item = self.ref_layout.takeAt(0)
-                    if item:
-                        item.widget().deleteLater()
+              
         except Exception as e:
             print(f"[update_ui]: {e}")
     
     def update_text(self,label):
         label_text = f"<b>Họ và tên: {label[1]}</b>"
-        label_text += f"<br>Bộ phận: {label[2]}"
+        label_text += f"<br>Đối tượng: {label[2]}"
         label_text += f"<br>Tuổi: {label[3]}"
         label_text += f"<br>Giới tính: {label[4]}"
         if label[7] == 1:

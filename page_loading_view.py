@@ -274,9 +274,9 @@ class ImportThread(QThread):
                                 
                                 image = cv2.imread(image_path)
                                 if image.shape[0] > image.shape[1]:
-                                        image = cv2.resize(image, (128*image.shape[0]//image.shape[1], 128 ))
+                                        image = cv2.resize(image, (128*image.shape[1]//image.shape[0], 128 ))
                                 else:
-                                        image = cv2.resize(image, (128, 128*image.shape[1]//image.shape[0]))
+                                        image = cv2.resize(image, (128, 128*image.shape[0]//image.shape[1]))
                                 image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
                                 # Convert image to QImage
                                 height, width, channel = image.shape

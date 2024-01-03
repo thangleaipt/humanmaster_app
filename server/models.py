@@ -104,3 +104,18 @@ class ReportImage(db.Model):
   def __init__(self, path, report_id):
     self.path = path
     self.report_id = report_id
+
+class Telegram(db.Model):
+  __tablename__ = "telegrams"
+  
+  id = Column(INTEGER, primary_key=True, autoincrement=True)
+  chat_id = Column(NVARCHAR(50), nullable=False, unique=True)
+  name = Column(NVARCHAR(50), nullable=False)
+  status = Column(INTEGER, nullable=False)
+  user_id = Column(INTEGER, ForeignKey(User.id), nullable=False)
+
+  def __init__(self, chat_id, name, status, user_id):
+    self.chat_id = chat_id
+    self.name = name
+    self.status =  status
+    self.user_id =  user_id

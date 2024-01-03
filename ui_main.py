@@ -23,9 +23,9 @@ from PySide2.QtWidgets import *
 from page_similarity_view import PAGESIMILARITY
 from page_image_view import PAGEIMAGE
 from page_add_user_view import PAGEADDUSER
+# from page_telegram_view import PAGETELEGRAM
 from page_widget_view import PAGEWIDGET
 from page_camera_view import PAGECAMERA
-from page_video_view import PAGEVIDEO
 import cv2
 from controller.Face_recognition.analyze_video_insightface import FaceAnalysisInsightFace
 
@@ -704,19 +704,15 @@ class Ui_MainWindow(object):
         self.analyzer = FaceAnalysisInsightFace()
         self.page_camera = PAGECAMERA()
         self.stackedWidget.addWidget(self.page_camera)
-
-        self.page_video = PAGEVIDEO()
-        self.stackedWidget.addWidget(self.page_video)
-
         self.page_image = PAGEIMAGE()
-        self.page_image.analyzer = self.analyzer
+        self.page_image.face_analyzer = self.analyzer
         self.stackedWidget.addWidget(self.page_image)
 
         self.page_similarity = PAGESIMILARITY()
         self.page_similarity.analyzer = self.analyzer
         self.stackedWidget.addWidget(self.page_similarity)
         
-        self.add_user = PAGEADDUSER(self.page_camera, self.page_video, self.page_image)
+        self.add_user = PAGEADDUSER(self.page_camera, self.page_image)
         self.add_user.analyzer = self.analyzer
 
         self.add_user.set_ui()
@@ -725,6 +721,9 @@ class Ui_MainWindow(object):
         self.page_widgets = PAGEWIDGET()
         self.page_widgets.analyzer = self.analyzer
         self.stackedWidget.addWidget(self.page_widgets)
+
+        # self.page_telegram = PAGETELEGRAM()
+        # self.stackedWidget.addWidget(self.page_widgets)
 
         self.verticalLayout_9.addWidget(self.stackedWidget)
         self.verticalLayout_4.addWidget(self.frame_content)

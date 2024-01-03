@@ -18,9 +18,27 @@ STATIC_FOLDER = os.path.join(PROJECT_FOLDER, 'static')
 REPORTS_IMAGES_FOLDER = os.path.join(STATIC_FOLDER, 'report_images')
 
 # DB config
-DB_USER = os.environ.get('DB_USER')
-DB_PASS = os.environ.get('DB_PASS')
-DB_HOST = os.environ.get('DB_HOST')
-DB_NAME = os.environ.get('DB_NAME')
+# DB_USER = os.environ.get('DB_USER')
+# DB_PASS = os.environ.get('DB_PASS')
+# DB_HOST = os.environ.get('DB_HOST')
+# DB_NAME = os.environ.get('DB_NAME')
+
+TELEGRAM_TOKEN = "6447111914:AAGITAAO2m6dPag_8UFv4T4INZGVczLVzJE"
+
+SECRET_KEY = "Wyj9GbtAHch1ibvlGdp52ZvNWZy1SZjFmZ"
+PORT = 8005
+HOST = "0.0.0.0"
+
+# DB config
+DB_USER = "face-recognition-app-local"
+DB_PASS = "aipt2023"
+DB_HOST = "localhost"
+DB_NAME = "face-recognition-app-local"
 
 db_engine = create_engine(f'mysql://{DB_USER}:{DB_PASS}@{DB_HOST}/{DB_NAME}')
+
+# Email
+SENDER_EMAIL = "kythuat6.aipt@gmail.com"
+PASSWORD_EMAIL = "rvwqknmandsitbcy"
+SMTP_SERVER = "smtp.gmail.com"
+SMTP_PORT = 587

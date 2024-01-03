@@ -13,14 +13,13 @@ from model.CameraCapture import VideoWriterWidget
 import cv2
 
 class PAGEADDUSER(QWidget):
-    def __init__(self, page_camera, page_video, page_image):
+    def __init__(self, page_camera, page_image):
         super().__init__()
         self.selected_labels = []
         self.selected_labels_2 = []
         self.upload_image = None
         self.analyzer = None
         self.page_camera = page_camera
-        self.page_video = page_video
         self.page_image = page_image
         self.setObjectName(u"page_user")
         
@@ -65,7 +64,7 @@ class PAGEADDUSER(QWidget):
         icon3 = QIcon()
         icon3.addFile(u":/16x16/icons/16x16/cil-folder-open.png", QSize(), QIcon.Normal, QIcon.Off)
         self.uploadButton.setIcon(icon3)
-        self.uploadButton.setText(QCoreApplication.translate("MainWindow", u"Open Image", None))
+        self.uploadButton.setText(QCoreApplication.translate("MainWindow", u"Upload Ảnh", None))
         self.uploadButton.setMinimumSize(QSize(200, 30))
         self.uploadButton.setMaximumSize(QSize(200, 30))
         self.uploadButton.clicked.connect(self.open_video_file)
@@ -135,7 +134,7 @@ class PAGEADDUSER(QWidget):
         icon3 = QIcon()
         icon3.addFile(u":/16x16/icons/16x16/cil-user-follow.png", QSize(), QIcon.Normal, QIcon.Off)
         self.addButton.setIcon(icon3)
-        self.addButton.setText(QCoreApplication.translate("MainWindow", u"Add User", None))
+        self.addButton.setText(QCoreApplication.translate("MainWindow", u"Thêm đối tượng", None))
         self.addButton.setMinimumSize(QSize(200, 30))
         self.addButton.setMaximumSize(QSize(200, 30))
         self.addButton.clicked.connect(self.add_label_images)
@@ -165,7 +164,7 @@ class PAGEADDUSER(QWidget):
         icon3 = QIcon()
         icon3.addFile(u":/16x16/icons/16x16/cil-user-unfollow.png", QSize(), QIcon.Normal, QIcon.Off)
         self.deleteButton.setIcon(icon3)
-        self.deleteButton.setText(QCoreApplication.translate("MainWindow", u"Delete User", None))
+        self.deleteButton.setText(QCoreApplication.translate("MainWindow", u"Xóa đối tượng", None))
         self.deleteButton.setMinimumSize(QSize(200, 30))
         self.deleteButton.setMaximumSize(QSize(200, 30))
         self.deleteButton.clicked.connect(self.delete_selected_labels)
@@ -268,8 +267,6 @@ class PAGEADDUSER(QWidget):
             self.analyzer.delete(self.selected_labels[i].text())
             for key, value in self.page_camera.list_camera_screen.items():
                 value.worker.face_analyzer.load_db_from_folder()
-            for key, value in self.page_video.list_camera_screen.items():
-                value.worker.face_analyzer.load_db_from_folder()
             for key, value in self.page_image.list_camera_screen.items():
                 value.worker.face_analyzer.load_db_from_folder()
         self.selected_labels = [] 
@@ -292,9 +289,6 @@ class PAGEADDUSER(QWidget):
 
             for key, value in self.page_camera.list_camera_screen.items():
                 value.worker.face_analyzer.load_db_from_folder()
-            for key, value in self.page_video.list_camera_screen.items():
-                value.worker.face_analyzer.load_db_from_folder()
-            # reset image
             self.camera_labels[0].setPixmap(QPixmap())
             self.lineLabel.setText("")
             self.linePosition.setText("")
