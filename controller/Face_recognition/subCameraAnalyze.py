@@ -13,7 +13,7 @@ from ultralytics.yolo.utils.plotting import Annotator
 
 from controller.mivolo.person_model import PersonModel
 
-from server.config import DATE_TIME_FORMAT, DATETIME_FORMAT
+from server.config import DATE_TIME_FORMAT, DATETIME_FORMAT, TELEGRAM_TOKEN
 from server.reports.services import add_report_service, add_video_service
 import cv2
 from controller.Face_recognition.analyze_video_insightface import FaceAnalysisInsightFace
@@ -33,8 +33,9 @@ from PySide2.QtGui import (QBrush, QColor, QConicalGradient, QCursor, QFont,
     QFontDatabase, QIcon, QLinearGradient, QPalette, QPainter,QPixmap,QImage,
     QRadialGradient)
 from scipy.optimize import linear_sum_assignment
+import telepot
 
-from server.telegrams.services import get_telegrams
+from server.telegrams.services import get_list_telegrams_db
 class CameraWorkerSignals(QObject):
     result = Signal(np.ndarray)
     finished = Signal()
@@ -45,6 +46,7 @@ class SubCameraAnalyze(QRunnable):
         super().__init__()
         self.video_path = video_path
         self.video_path_report = video_path
+        self.bot = telepot.Bot(TELEGRAM_TOKEN) 
         self.signals = CameraWorkerSignals()
         if type(self.video_path) == str:
             if 'rtsp' in self.video_path:
@@ -65,17 +67,20 @@ class SubCameraAnalyze(QRunnable):
         self.predictor = Predictor()
 
         self.is_running = True
+        self.is_send_telegram = True
         self.index_frame = 0
         self.telegram_buffer = queue.Queue()
-        # self.telegrams = get_telegrams()
+        self.telegrams = get_list_telegrams_db()
 
         self.list_person_model = []
         self.list_total_id = []
         self.list_id_check_in_frame = []
         self.list_image_label = []
         self.buffer_frame = queue.Queue()
-        self.thread_greeting = threading.Thread(target=self.face_analyzer.welcomespeech)
-        self.thread_greeting.start()
+        # self.thread_greeting = threading.Thread(target=self.face_analyzer.welcomespeech)
+        # self.thread_greeting.start()
+        self.thread_send_telegram = threading.Thread(target=self.telegram_send_img_message)
+        self.thread_send_telegram.start()
 
         if self.video_path.isdigit():
             self.video_path = int(self.video_path)
@@ -96,14 +101,17 @@ class SubCameraAnalyze(QRunnable):
     
     def analyze_frame(self):
         while True:
+            if not self.is_running:
+                break
             frame = self.buffer_frame.get()
             if frame is not None:
                 image, list_image_label = self.analyze_video(frame)
                 self.signals.updateUI.emit(list_image_label)
 
     def run(self):
-        list_image_label = []
         while self.video_capture is not None:
+            if not self.is_running:
+                break
             ret, frame = self.video_capture.read()
             if ret:
                 image = frame.copy()
@@ -130,13 +138,14 @@ class SubCameraAnalyze(QRunnable):
         if self.video_capture is not None:
             self.face_analyzer.is_running_greeting = False
             self.face_analyzer.buffer_label.put("")
-            self.thread_greeting.is_alive = False
-            del self.face_analyzer
-
-
             self.is_running = False
+            self.is_send_telegram = False
+
+            self.buffer_frame.put(None)
+            self.telegram_buffer.put(None, None, None)
+
             self.video_capture.release()
-            self.video_capture = None
+
             torch.cuda.empty_cache()
             
         list_thread = threading.enumerate()
@@ -332,6 +341,7 @@ class SubCameraAnalyze(QRunnable):
                             color_face = (255, 0, 0)
 
                     annotator.box_label(box_face_plot,"",color_face)
+                    annotator_save.box_label(box_face_plot,"",color_face)
                 
                 if d is not None and len(d) > 0:
                     box_person = d[0][0:4]
@@ -345,7 +355,7 @@ class SubCameraAnalyze(QRunnable):
 
                     person_image = image[box_person[1]:box_person[3], box_person[0]:box_person[2]]
                     annotator.box_label(box_person, label, color=color_person,txt_color=color_text)
-                    annotator_save.box_label(box_person, "", color=color_person,txt_color=color_text)
+                    annotator_save.box_label(box_person, label, color=color_person,txt_color=color_text)
 
                 frame = annotator.result()
 
@@ -431,7 +441,7 @@ class SubCameraAnalyze(QRunnable):
                     self.list_total_id.append(guid)
                 else:
                     index = self.list_total_id.index(guid)
-                    if self.index_frame % 3 == 0:
+                    if self.index_frame % 1 == 0:
                         if label_name is not None:
                             self.list_person_model[index].list_face_name.append(label_name)
                             if len(self.list_person_model[index].list_face_name) > 50:
@@ -496,16 +506,15 @@ class SubCameraAnalyze(QRunnable):
                             self.list_person_model[index].person_image = path_save_person_image
                             if path_save_person_image not in self.list_person_model[index].list_image_path:
                                 self.list_person_model[index].list_image_path.append(path_save_person_image)
-                            if self.list_person_model[index].counting_telegram < 5 and path_save_face_image == "":
-                                if self.list_person_model[index].counting_telegram < 5:
-                                    # self.telegram_buffer.put([path_image, self.list_person_model[index], self.telegrams])
-                                    self.list_person_model[index].counting_telegram += 1
-
+                            if self.list_person_model[index].counting_telegram < 3 and path_save_face_image == "":
                                 list_image_label.append([path_save_person_image, label_name, position, age, gender, guid, main_color_clothes,label_mask, time_label])
                                 self.list_person_model[index].counting_telegram += 1
                             if extend_face_image is None:
                                 self.list_person_model[index].role = 1
                         cv2.imwrite(path_image, image_save)
+                        if self.list_person_model[index].counting_telegram < 2:
+                            self.telegram_buffer.put([path_image, self.list_person_model[index], self.telegrams])
+                          
                         self.list_person_model[index].list_image_path.append(path_image)
             
             # Send data to report
@@ -513,10 +522,9 @@ class SubCameraAnalyze(QRunnable):
                 logging.info(f"[analyze_video][index_frame] Send data to report: {self.index_frame}, {len(self.list_person_model)}")
                 if len(self.list_person_model) > 0:
                     self.send_report_to_db()
-                    
-            if len(self.list_person_model) >= 1000:      
-                self.list_total_id.remove(self.list_total_id[0])
-                self.list_person_model.remove(self.list_person_model[0])             
+                    self.list_person_model = []
+                    self.list_total_id = []
+                         
             return frame,list_image_label
         except Exception as e:
             print(f'[{datetime.now().strftime(DATETIME_FORMAT)}][analyze][generate_frames]: {e}')
@@ -527,9 +535,13 @@ class SubCameraAnalyze(QRunnable):
         try:
       # for telegram in telegrams:
             while True:
+                if self.is_send_telegram == False:
+                    break
                 img_path, person_model, telegrams = self.telegram_buffer.get()
+                if img_path is None and person_model is None and telegrams is None:
+                    continue
                 print(f"Telegram send image: {img_path}")
-                text_send = f"*Camera: {self.name_camera}*\n"
+                text_send = f"*Camera: {self.name_video}*\n"
                 text_send += f"ID: _{person_model.id}_\n"
       
                 if person_model.label_name is not None and person_model.label_name != "":
@@ -568,7 +580,7 @@ class SubCameraAnalyze(QRunnable):
                 else:
                     text_send += f"Màu trang phục: _Không xác định_\n"
 
-                text_send += f"Thời gian nhận diện: _{person_model.time}_\n"
+                text_send += f"Thời gian nhận diện: _{datetime.fromtimestamp(person_model.time)}_\n"
 
                 for telegram in telegrams:
                     try:
@@ -665,7 +677,6 @@ class CameraWidget(QWidget):
 
         self.camera_label.setObjectName(u"camera_label_{}".format(index))
         self.camera_label.setStyleSheet("border: 2px solid red;")
-        self.camera_label.setText("Loading model nhận diện")
 
         self.close_button.clicked.connect(self.stop_camera)
         self.camera_label.setAlignment(Qt.AlignCenter)
@@ -685,9 +696,10 @@ class CameraWidget(QWidget):
 
     def stop_camera(self):
         if self.worker:
-            self.worker.stop()
             self.worker.signals.result.disconnect(self.display_image)
             self.worker.signals.updateUI.disconnect(self.update_ui)
+            self.worker.stop()
+            
         # Stop the camera capture
         self.thread_pool.clear()
         print(f"Length thread pool: {self.thread_pool.activeThreadCount()}")
@@ -739,6 +751,9 @@ class CameraWidget(QWidget):
 
     def update_ui(self, list_image_label):
         try:
+            if self.ref_layout.count() == 20:
+                self.clear_layout(self.ref_layout)
+
             for i in range(len(list_image_label)):
                 h_layout = QHBoxLayout()  # Create a QHBoxLayout for each row
                 recognition_image = cv2.imread(list_image_label[i][0])
@@ -775,6 +790,15 @@ class CameraWidget(QWidget):
               
         except Exception as e:
             print(f"[update_ui]: {e}")
+
+    def clear_layout(self, layout):
+        while layout.count():
+            item = layout.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.deleteLater()
+            else:
+                self.clear_layout(item.layout())
     
     def update_text(self,label):
         label_text = f"<b>Họ và tên: {label[1]}</b>"

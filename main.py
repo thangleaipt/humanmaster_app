@@ -100,7 +100,7 @@ class LoginWindow(QMainWindow):
             else:
                 QMessageBox.warning(self, "Lỗi đăng nhập", f"{message}", QMessageBox.Ok)
         else: 
-            QMessageBox.warning(self, "Hết hạn đăng nhập")
+            QMessageBox.warning(self, "Hết hạn đăng nhập", "Vui lòng liên hệ AIPT AI để được hỗ trợ!", QMessageBox.Ok)
         
 
     def mousePressEvent(self, event):
@@ -144,8 +144,8 @@ class MainWindow(QMainWindow):
         UIFunctions.addNewMenu(self, "ẢNH", "btn_image", "url(:/16x16/icons/16x16/cil-image1.png)", True)
         UIFunctions.addNewMenu(self, "XÁC MINH", "btn_similarity", "url(:/16x16/icons/16x16/cil-people.png)", True)
         UIFunctions.addNewMenu(self, "ĐỐI TƯỢNG", "btn_new_user", "url(:/16x16/icons/16x16/cil-user-follow.png)", True)
+        UIFunctions.addNewMenu(self, "TELEGRAM", "btn_telegram", "url(:/16x16/icons/16x16/cil-chart-pie.png)", True)
         UIFunctions.addNewMenu(self, "BÁO CÁO", "btn_report", "url(:/16x16/icons/16x16/cil-equalizer.png)", False)
-        # UIFunctions.addNewMenu(self, "TELEGRAM", "btn_telegram", "url(:/16x16/icons/16x16/cil-chart-pie.png)", False)
         ## ==> END ##
 
         # START MENU => SELECTION
@@ -324,8 +324,9 @@ def init_app():
     app = QApplication(sys.argv)
     QtGui.QFontDatabase.addApplicationFont('fonts/segoeui.ttf')
     QtGui.QFontDatabase.addApplicationFont('fonts/segoeuib.ttf')
-
+    create_db()
     login_window = LoginWindow()
+    login_window.show()
     sys.exit(app.exec_())
 
 if __name__ == "__main__":

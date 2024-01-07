@@ -1,7 +1,4 @@
-from datetime import datetime, timezone, timedelta
-import math
-import os
-import threading
+
 from PySide2.QtCore import (QCoreApplication, QMetaObject, QObject, QPoint,
     QRect, QSize, QUrl, Qt, QDateTime, QTime)
 from PySide2.QtGui import (QBrush, QColor, QConicalGradient, QCursor, QFont,
@@ -9,20 +6,19 @@ from PySide2.QtGui import (QBrush, QColor, QConicalGradient, QCursor, QFont,
     QRadialGradient, QDesktopServices)
 
 from PySide2.QtWidgets import *
-from page_report_view import PAGEREPORT
-from server.telegrams.services import get_telegrams
-import cv2
-import moviepy.editor as mp
-from PyQt5.QtCore import pyqtSlot
+import requests
+from server.telegrams.services import delete_telegram_service, get_list_telegrams_db, create_telegram, update_status_telegram_service
+from server.config import API_TELEGRAM
 
 
-column_ratios = [0.2, 0.2, 0.3, 0.3]
+column_ratios = [0.1, 0.15, 0.25, 0.25, 0.25]
 
 class PAGETELEGRAM(QWidget):
-        def __init__(self):
+        def __init__(self, page_camera):
                 super().__init__()
                 self.analyzer = None
                 self.list_telegrams = []
+                self.page_camera = page_camera
                 self.setObjectName(u"page_telegram")
                 self.set_ui()
                 self.retranslateUi()
@@ -39,11 +35,11 @@ class PAGETELEGRAM(QWidget):
                 self.filter_layout = QHBoxLayout(self.filter_groupbox)
                 self.filter_layout.setObjectName(u"filter_layout")
                 # Buton Search
-                self.search_button = QPushButton("Search", self.filter_groupbox)
-                self.search_button.setObjectName(u"search_button")
-                self.search_button.setFixedSize(100, 50)
-                self.filter_layout.addWidget(self.search_button)
-                self.search_button.setStyleSheet(u"QPushButton {\n"
+                self.connect_button = QPushButton("Kết nối Telegram", self.filter_groupbox)
+                self.connect_button.setObjectName(u"search_button")
+                self.connect_button.setFixedSize(100, 50)
+                self.filter_layout.addWidget(self.connect_button)
+                self.connect_button.setStyleSheet(u"QPushButton {\n"
                 "	border: 2px solid rgb(27, 29, 35);\n"
                 "	border-radius: 5px;	\n"
                 "	background-color: rgb(27, 29, 35);\n"
@@ -58,8 +54,30 @@ class PAGETELEGRAM(QWidget):
                 "}")
                 icon3 = QIcon()
                 icon3.addFile(u":/16x16/icons/16x16/cil-magnifying-glass.png", QSize(), QIcon.Normal, QIcon.Off)
-                self.search_button.setIcon(icon3)
-                self.search_button.clicked.connect(self.get_list_telegram)
+                self.connect_button.setIcon(icon3)
+                self.connect_button.clicked.connect(self.add_telegram)
+
+                self.add_button = QPushButton("Thêm Telegram", self.filter_groupbox)
+                self.add_button.setObjectName(u"add_button")
+                self.add_button.setFixedSize(100, 50)
+                self.filter_layout.addWidget(self.add_button)
+                self.add_button.setStyleSheet(u"QPushButton {\n"
+                "	border: 2px solid rgb(27, 29, 35);\n"
+                "	border-radius: 5px;	\n"
+                "	background-color: rgb(27, 29, 35);\n"
+                "}\n"
+                "QPushButton:hover {\n"
+                "	background-color: rgb(57, 65, 80);\n"
+                "	border: 2px solid rgb(61, 70, 86);\n"
+                "}\n"
+                "QPushButton:pressed {	\n"
+                "	background-color: rgb(35, 40, 49);\n"
+                "	border: 2px solid rgb(43, 50, 61);\n"
+                "}")
+                icon3 = QIcon()
+                icon3.addFile(u":/16x16/icons/16x16/cil-magnifying-glass.png", QSize(), QIcon.Normal, QIcon.Off)
+                self.add_button.setIcon(icon3)
+                self.add_button.clicked.connect(self.get_user_info)
 
                 # Add the filter group box to the main layout
                 self.verticalLayout_6.addWidget(self.filter_groupbox)
@@ -75,8 +93,8 @@ class PAGETELEGRAM(QWidget):
                 self.horizontalLayout_12.setObjectName(u"horizontalLayout_12")
                 self.horizontalLayout_12.setContentsMargins(0, 0, 0, 0)
                 self.tableWidget = QTableWidget(self.frame_3)
-                if (self.tableWidget.columnCount() < 4):
-                        self.tableWidget.setColumnCount(4)
+                if (self.tableWidget.columnCount() < 5):
+                        self.tableWidget.setColumnCount(5)
                         __qtablewidgetitem = QTableWidgetItem()
                         self.tableWidget.setHorizontalHeaderItem(0, __qtablewidgetitem)
                         __qtablewidgetitem1 = QTableWidgetItem()
@@ -85,8 +103,10 @@ class PAGETELEGRAM(QWidget):
                         self.tableWidget.setHorizontalHeaderItem(2, __qtablewidgetitem2)
                         __qtablewidgetitem3 = QTableWidgetItem()
                         self.tableWidget.setHorizontalHeaderItem(3, __qtablewidgetitem3)
-                if (self.tableWidget.rowCount() < 16):
-                        self.tableWidget.setRowCount(16)
+                        __qtablewidgetitem4 = QTableWidgetItem()
+                        self.tableWidget.setHorizontalHeaderItem(4, __qtablewidgetitem4)
+                if (self.tableWidget.rowCount() < 10):
+                        self.tableWidget.setRowCount(10)
                         font2 = QFont()
                         font2.setFamily(u"Segoe UI")
                         self.tableWidget.setObjectName(u"tableWidget")
@@ -153,7 +173,7 @@ class PAGETELEGRAM(QWidget):
                 "QScrollBar:horizontal {\n"
                 "    border: none;\n"
                 "    background: rgb(52, 59, 72);\n"
-                "    height: 14px;\n"
+                "    height: 15px;\n"
                 "    margin: 0px 21px 0 21px;\n"
                 "	border-radius: 0px;\n"
                 "}\n"
@@ -220,11 +240,15 @@ class PAGETELEGRAM(QWidget):
                         ___qtablewidgetitem2.setText(QCoreApplication.translate("MainWindow", u"Họ và tên", None));
                         ___qtablewidgetitem3 = self.tableWidget.horizontalHeaderItem(3)
                         ___qtablewidgetitem3.setText(QCoreApplication.translate("MainWindow", u"Trạng thái", None));
+                        ___qtablewidgetitem4 = self.tableWidget.horizontalHeaderItem(4)
+                        ___qtablewidgetitem4.setText(QCoreApplication.translate("MainWindow", u"Thao tác", None));
                         self.get_list_telegram()
 
         def get_list_telegram(self):
-                self.list_telegrams = get_telegrams()
-                if len(self.list_telegrams) >= 16:
+                self.tableWidget.clearContents()
+                self.list_telegrams = get_list_telegrams_db()
+                self.page_camera.telegrams = self.list_telegrams
+                if len(self.list_telegrams) >= 10:
                         self.tableWidget.setRowCount(len(self.list_telegrams))
 
                 for i, telegram in enumerate(self.list_telegrams):
@@ -232,6 +256,65 @@ class PAGETELEGRAM(QWidget):
                         self.tableWidget.setItem(i, 1, QTableWidgetItem(str(telegram.chat_id)))
                         self.tableWidget.setItem(i, 2, QTableWidgetItem(str(telegram.name)))
                         self.tableWidget.setItem(i, 3, QTableWidgetItem(str(telegram.status)))
+
+                        # Creating the layout and buttons
+                        layout = QHBoxLayout()
+
+                        # Xóa button
+                        delete_button = QPushButton('Xóa')
+                        delete_button.setStyleSheet(u"QPushButton {\n"
+                                "	border: 2px solid rgb(57, 65, 80);\n"
+                                "	border-radius: 5px;	\n"
+                                "	background-color: rgb(57, 65, 80);\n"
+                                "}\n")
+                        delete_button.setFixedHeight(25)
+                        delete_button.clicked.connect(lambda row=i: self.delete_row(row))  # Connect the button to a delete_row function
+                        layout.addWidget(delete_button)
+
+                        # Thay đổi trạng thái button
+                        change_status_button = QPushButton('Thay đổi trạng thái')
+                        change_status_button.setStyleSheet(u"QPushButton {\n"
+                                "	border: 2px solid rgb(57, 65, 80);\n"
+                                "	border-radius: 5px;	\n"
+                                "	background-color: rgb(57, 65, 80);\n"
+                                "}\n")
+                        change_status_button.setFixedHeight(25)
+                        change_status_button.clicked.connect(lambda row=i: self.change_status(row))  # Connect the button to a change_status function
+                        layout.addWidget(change_status_button)
+
+                        # Creating a widget to hold the layout
+                        container = QWidget()
+                        container.setLayout(layout)
+
+                        # Setting the widget as the item in the fourth column
+                        self.tableWidget.setCellWidget(i, 4, container)
+        def delete_row(self, row):
+                delete_telegram_service(self.list_telegrams[row].chat_id)
+                self.get_list_telegram()
+
+        def change_status(self, row):
+                update_status_telegram_service(self.list_telegrams[row].chat_id)
+                self.get_list_telegram()
+
+        def get_user_info(self):
+                try:
+                        # Make a request to the Telegram Bot API
+                        response = requests.get(API_TELEGRAM)
+                        response.raise_for_status()  # Raise an exception for HTTP errors
+                        list_telegram_id = []
+                        # Parse the JSON response
+                        data = response.json()
+                        latest_message = max(data['result'], key=lambda x: x['message']['date'])
+
+                        # Extract user_id and name from the latest message
+                        chat_id = latest_message['message']['from']['id']
+                        name = latest_message['message']['from']['first_name']
+                        create_telegram(chat_id, name)
+                        self.get_list_telegram()
+
+                except requests.exceptions.RequestException as e:
+                        print(f"Error: {e}")
+                        
 
         def add_telegram(self):
                 url = QUrl("https://t.me/HumanmasterBot")
@@ -242,4 +325,7 @@ class PAGETELEGRAM(QWidget):
                 column_widths = [int(ratio * screen_width) for ratio in column_ratios]
                 for i in range(4):
                         self.tableWidget.setColumnWidth(i, column_widths[i])
+                row_height = 50
+                for row in range(self.tableWidget.rowCount()):
+                        self.tableWidget.setRowHeight(row, row_height)
                 super().resizeEvent(event)

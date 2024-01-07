@@ -32,6 +32,9 @@ class PersonModel:
         self.score_face = 0
         self.real_time = 0
 
+        self.start_age = 0
+        self.end_age = 0
+
 
     def to_json(self):
         return {

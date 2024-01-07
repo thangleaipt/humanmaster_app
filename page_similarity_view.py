@@ -114,10 +114,9 @@ class PAGESIMILARITY(QWidget):
                 if max_similarity < similarity:
                     max_similarity = similarity
                     box = feature[0]
-            if max_similarity < 0.35:
+            if max_similarity < 0.25:
                 QMessageBox.warning(self, "Warning", "Hai ảnh có khuôn mặt không giống nhau", QMessageBox.Ok) 
                 self.list_camera_screen[self.list_camera[1]].setPixmap(QPixmap(""))
-                self.list_camera_screen[self.list_camera[1]].deleteLater()
             else:
                 percentage = max_similarity * 100
                 image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)

@@ -3,7 +3,6 @@ from datetime import datetime
 import os
 import queue
 import threading
-import winsound
 import pygame
 from unidecode import unidecode
 import tkinter as tk

@@ -112,10 +112,8 @@ class Telegram(db.Model):
   chat_id = Column(NVARCHAR(50), nullable=False, unique=True)
   name = Column(NVARCHAR(50), nullable=False)
   status = Column(INTEGER, nullable=False)
-  user_id = Column(INTEGER, ForeignKey(User.id), nullable=False)
 
-  def __init__(self, chat_id, name, status, user_id):
+  def __init__(self, chat_id, name, status):
     self.chat_id = chat_id
     self.name = name
     self.status =  status
-    self.user_id =  user_id

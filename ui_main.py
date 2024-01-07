@@ -23,7 +23,7 @@ from PySide2.QtWidgets import *
 from page_similarity_view import PAGESIMILARITY
 from page_image_view import PAGEIMAGE
 from page_add_user_view import PAGEADDUSER
-# from page_telegram_view import PAGETELEGRAM
+from page_telegram_view import PAGETELEGRAM
 from page_widget_view import PAGEWIDGET
 from page_camera_view import PAGECAMERA
 import cv2
@@ -722,8 +722,8 @@ class Ui_MainWindow(object):
         self.page_widgets.analyzer = self.analyzer
         self.stackedWidget.addWidget(self.page_widgets)
 
-        # self.page_telegram = PAGETELEGRAM()
-        # self.stackedWidget.addWidget(self.page_widgets)
+        self.page_telegram = PAGETELEGRAM(self.page_camera)
+        self.stackedWidget.addWidget(self.page_telegram)
 
         self.verticalLayout_9.addWidget(self.stackedWidget)
         self.verticalLayout_4.addWidget(self.frame_content)
