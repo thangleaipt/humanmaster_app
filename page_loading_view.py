@@ -53,34 +53,19 @@ class FaceFilterThread(QThread):
                         
                         # Unknown person and have face
                         if len(list_instance) > 0: 
-                                number = 0
                                 string_update = "Tìm khuôn mặt"
                                 self.progress_signal.emit(string_update)
                                 feature_image_import = self.report.analyzer.get_feature(frame_import)[0]
-                                for report in self.report.list_reports:
-                                        number += 1
-                                        self.counter = round(number / len(self.report.list_reports) * 100)
-                                        if len(self.report.list_reports) <number:
-                                               self.counter = 100
-                                        self.progress_update.emit(self.counter)
-                                        list_class_image = report['images']
-                                        list_path_face_image = []
-                                        for image in list_class_image:
-                                                name_image = os.path.basename(image['path'])
-                                                if "face_" in name_image:
-                                                        list_path_face_image.append(image['path'])
-                                               
-                                        for path_image in list_path_face_image:
-                                                frame_ref = cv2.imread(path_image)
-                                                feature_ref = self.report.analyzer.get_feature(frame_ref)
-                                                if len(feature_ref) > 0:
-                                                        similarity = self.report.analyzer.rec.compute_sim(feature_image_import, feature_ref[0])
-                                                else:
-                                                        similarity = 0
-                                                if similarity > 0.2:
-                                                        max_report = report
-                                                        break
-  
+                                for feature in self.report.list_feature_face:
+                                        feature_ref = feature[0]
+                                        index = feature[1]
+                                        if len(feature_ref) > 0:
+                                                similarity = self.report.analyzer.rec.compute_sim(feature_image_import, feature_ref[0])
+                                        else:
+                                                similarity = 0
+                                        if similarity > 0.2:
+                                                max_report = self.report.list_reports[index]
+
                                         if max_report is not None and max_report not in self.report.list_reports_filter:   
                                                 if similarity > 0.45:
                                                         percent = 0.98
@@ -91,8 +76,10 @@ class FaceFilterThread(QThread):
                                                 max_report['percent_face'] = round(percent * 100, 2)          
                                                 self.report.list_reports_filter.append(max_report)
                                                 print(f"Tìm khuôn mặt: {max_report['person_name']} - {similarity}%")
+                                       
 
     def fill_report(self):
+                self.report.list_reports_filter = sorted(self.report.list_reports_filter, key=lambda report: float(report['percent_face']), reverse=True)
                 if len(self.report.list_reports_filter) >= 16:
                         self.report.tableWidget.setRowCount(len(self.report.list_reports_filter))
                 else:
@@ -167,7 +154,7 @@ class FaceFilterThread(QThread):
                                 pixmap = QPixmap()
                                 item = QTableWidgetItem()
                                 item.setData(Qt.DecorationRole, pixmap)
-                                self.report.tableWidget.setItem(i, 7, item)
+                                self.report.tableWidget.setItem(i, 9, item)
 
                         self.report.tableWidget.setRowHeight(i, pixmap.height())
                         self.report.tableWidget.setColumnWidth(4, pixmap.width() + 20)
@@ -191,46 +178,25 @@ class PersonFilterThread(QThread):
                         frame_import = cv2.imread(file_path)
                         min_report = None
                         self.report.list_reports_filter = []
-        
-                        number = 0
                         string_update = "Tìm dáng người"
                         self.progress_signal.emit(string_update)
                         h_import,w1_import,_ = frame_import.shape
                         xyxys_import =  np.array([[0,0,w1_import,h_import]])
                         feature_image_import = reid.get_features(xyxys_import,frame_import)[0]
-                        for report in self.report.list_reports:
-                                if report not in self.report.list_reports_filter:
-                                        number += 1
-                                        self.counter = round(number / len(self.report.list_reports) * 100)
-                                        if len(self.report.list_reports) <number:
-                                                self.counter = 100
-                                        self.progress_update.emit(self.counter)
-                                        list_path_person_image = []
-                                        list_class_image = report['images']
-                                        for image in list_class_image:
-                                                name_image = os.path.basename(image['path'])
-                                                if "person_" in name_image:
-                                                        list_path_person_image.append(image['path'])
-                        
-                                        for index,path_image in enumerate(list_path_person_image):
-                                                frame_ref = cv2.imread(path_image)
-                                                h_ref,w1_ref,_ = frame_ref.shape
-                                                xyxys_ref =  np.array([[0,0,w1_ref,h_ref]])
-                                                feature_ref = reid.get_features(xyxys_ref,frame_ref)[0]
-                                                dist = self.report._cosine_distance(np.array([feature_image_import]), np.array([feature_ref]))[0][0]
-                                                if dist < 0.2:
-                                                        min_report = report
-                                                        break
+                        print(f"Length list feature ref: {len(self.report.list_feature_person)} Length list reports: {len(self.report.list_reports)}")
+                        for feature in self.report.list_feature_person:
+                                feature_ref = feature[0]
+                                index = feature[1]
+                                dist = self.report._cosine_distance(np.array([feature_image_import]), np.array([feature_ref]))[0][0]
+                                if dist < 0.2:
+                                        min_report = self.report.list_reports[index]
                                                         
-                                        if min_report is not None and min_report not in self.report.list_reports_filter:    
-                                                min_report['percent_person'] = round((1-dist) * 100, 2)         
-                                                self.report.list_reports_filter.append(min_report)
-                                                print(f"Tìm dáng người: {min_report['person_name']} - {dist}%")
-                                        elif min_report is not None and min_report in self.report.list_reports_filter:
-                                                index = self.report.list_reports_filter.index(min_report)
-                                                self.report.list_reports_filter[index]['percent_person'] = round((1-dist) * 100, 2)
+                                if min_report is not None and min_report not in self.report.list_reports_filter: 
+                                        min_report['percent_person'] = round((1-dist) * 100, 2)            
+                                        self.report.list_reports_filter.append(min_report)
+                                        print(f"Tìm dáng người: {min_report['person_name']} - {min_report['percent_person']}%")
     def fill_report(self):
-                self.report.list_reports_filter = sorted(self.report.list_reports_filter, key=lambda report: report['percent_face'], reverse=False)
+                self.report.list_reports_filter = sorted(self.report.list_reports_filter, key=lambda report: float(report['percent_person']), reverse=True)
                 if len(self.report.list_reports_filter) >= 16:
                         self.report.tableWidget.setRowCount(len(self.report.list_reports_filter))
                 else:
@@ -305,12 +271,52 @@ class PersonFilterThread(QThread):
                                 pixmap = QPixmap()
                                 item = QTableWidgetItem()
                                 item.setData(Qt.DecorationRole, pixmap)
-                                self.report.tableWidget.setItem(i, 7, item)
+                                self.report.tableWidget.setItem(i, 9, item)
 
                         self.report.tableWidget.setRowHeight(i, pixmap.height())
                         self.report.tableWidget.setColumnWidth(4, pixmap.width() + 20)
 
+class FeatureThread(QThread):
+    finished = Signal()
+    progress_update = Signal(int)
+    progress_signal = Signal(str)
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.report = parent
+        self.counter = 0
 
+    def run(self):
+        self.get_feature_query()
+        self.finished.emit()
+    def get_feature_query(self):
+                number = 0
+                string_update = "Lấy dữ liệu khuôn mặt"
+                self.progress_signal.emit(string_update)
+                for index, report in enumerate(self.report.list_reports):
+                                number += 1
+                                self.counter = round(number / len(self.report.list_reports) * 100)
+                                self.progress_update.emit(self.counter)
+                                list_path_person_image = []
+                                list_path_face_image = []
+                                list_class_image = report['images']
+                                for image in list_class_image:
+                                        name_image = os.path.basename(image['path'])
+                                        if "person_" in name_image:
+                                                list_path_person_image.append(image['path'])
+                                        elif "face_" in name_image:
+                                                list_path_face_image.append(image['path'])
+                
+                                for path_image in list_path_person_image:
+                                        frame_ref = cv2.imread(path_image)
+                                        h_ref,w1_ref,_ = frame_ref.shape
+                                        xyxys_ref =  np.array([[0,0,w1_ref,h_ref]])
+                                        feature_ref = reid.get_features(xyxys_ref,frame_ref)[0]
+                                        self.report.list_feature_person.append([feature_ref, index])
+                                for path_image in list_path_face_image:
+                                        frame_ref = cv2.imread(path_image)
+                                        feature_ref = self.report.analyzer.get_feature(frame_ref)
+                                        self.report.list_feature_face.append([feature_ref, index])
+                           
 class LoadingScreen(QMainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -346,6 +352,13 @@ class LoadingScreen(QMainWindow):
         self.loading_thread.progress_signal.connect(self.update_signal)
         self.loading_thread.start()
 
+    def get_feature(self):
+           self.feature_thread = FeatureThread(self.report)
+           self.feature_thread.finished.connect(self.close_loading_thread)
+           self.feature_thread.progress_update.connect(self.update_progress)
+           self.feature_thread.progress_signal.connect(self.update_signal)
+           self.feature_thread.start()
+
     def update_progress(self, value):
         self.progress.set_value(value)
 
@@ -354,6 +367,8 @@ class LoadingScreen(QMainWindow):
     def loading_finished(self):
         self.close()
         self.loading_thread.fill_report()
+    def close_loading_thread(self):
+        self.close()
 
 
 

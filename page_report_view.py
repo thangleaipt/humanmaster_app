@@ -96,6 +96,8 @@ class PAGEREPORT(QDialog):
                 self.list_reports_filter = []
                 self.list_reports = []
                 self.list_file_path = []
+                self.list_feature_face = []
+                self.list_feature_person = []
                 self.counter = 0
                 self.video_id = index
                 self.time = time
@@ -573,6 +575,9 @@ class PAGEREPORT(QDialog):
 
         def filter_report(self):
                 self.get_list_report()
+                if len(self.list_feature_face) == 0 or len(self.list_feature_face) < len(self.list_reports) or len(self.list_feature_person) == 0 or len(self.list_feature_person) < len(self.list_reports):
+                        loading_screen = LoadingScreen(self)
+                        loading_screen.get_feature()
                 self.fill_report()
                 self.show()
 
@@ -770,7 +775,7 @@ class PAGEREPORT(QDialog):
 
                         pdf_canvas.drawInlineImage(logo_path, 250, 710, width=133, height=64)
                         pdf_canvas.setFont("Segoe UI Bold", 20)
-                        pdf_canvas.drawString(180, 685, "PHẦN MỀM VIDEOMASTER AI")
+                        pdf_canvas.drawString(180, 685, "PHẦN MỀM HUMANMASTER AI")
                         pdf_canvas.setFont("Segoe UI Bold", 20)
                         pdf_canvas.drawString(215, 660, "BÁO CÁO NHẬN DIỆN")
                         pdf_canvas.setFont("Segoe UI Bold", 11)
