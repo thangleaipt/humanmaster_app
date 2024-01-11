@@ -21,7 +21,7 @@ class Login(object):
             MainWindow.setObjectName(u"MainWindow")
         MainWindow.resize(474, 682)
         icon = QIcon()
-        icon.addFile(r"icons\img\video_24024.png", QSize(), QIcon.Normal, QIcon.Off)
+        icon.addFile(r"icons\img\cctv.png", QSize(), QIcon.Normal, QIcon.Off)
         MainWindow.setWindowIcon(icon)
         MainWindow.setWindowOpacity(1.000000000000000)
         self.centralwidget = QWidget(MainWindow)
